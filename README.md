@@ -1,20 +1,11 @@
-<table>
-  <tr>
-    <td width="110" align="center">
-      <img src="docs/forge-logo.svg" width="100" alt="SpringForge logo"/>
-    </td>
-    <td>
-      <h1>SpringForge</h1>
-      <p>A modular starter kit for Spring Boot 4 microservices on Java 27.</p>
-    </td>
-  </tr>
-</table>
+# SpringForge
 
-[![Java](https://img.shields.io/badge/Java-27-orange.svg)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.2-6DB33F.svg)](https://spring.io/projects/spring-boot)
-[![Gradle](https://img.shields.io/badge/Gradle-9.8.2-02303A.svg)](https://gradle.org/)
-[![JUnit](https://img.shields.io/badge/JUnit-6.0.3-25A162.svg)](https://junit.org/)
-[![JaCoCo](https://img.shields.io/badge/JaCoCo-report-yellowgreen.svg)](https://www.jacoco.org/jacoco/)
+<img src="docs/forge-logo.svg" alt="SpringForge logo" align="right" width="128" height="128" />
+
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.foundry4j/quarkforge-core?logo=apachemaven&color=blue)](https://central.sonatype.com/artifact/io.github.foundry4j/quarkforge-core)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=foundry4j_SpringForge&metric=coverage)](https://sonarcloud.io/summary/new_code?id=foundry4j_SpringForge)
+![Java 27+](https://img.shields.io/badge/Java-27%2B-ED8B00?logo=openjdk&logoColor=white)
+[![CI](https://github.com/foundry4j/SpringForge/actions/workflows/ci.yml/badge.svg)](https://github.com/foundry4j/SpringForge/actions/workflows/ci.yml)
 
 ## Overview
 
@@ -24,7 +15,6 @@ so an application only has to depend on the modules it needs and keep its own co
 the domain.
 
 - Spring Boot 4.1 with Spring Framework 7, Jackson 3 and Hibernate 7
-- Java 27 language level, Markdown `///` documentation comments, unnamed variables
 - Local-first defaults: the sample application runs without Redis, RabbitMQ, Kafka or an
   external database
 - Production-ready primitives: RFC 9457 errors, idempotency, rate limiting, distributed
