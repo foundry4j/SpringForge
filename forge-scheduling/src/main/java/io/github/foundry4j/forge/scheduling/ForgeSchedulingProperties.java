@@ -2,10 +2,10 @@ package io.github.foundry4j.forge.scheduling;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/// Configuration of the Quartz based scheduling layer.
+/// Configuration of the JobRunr based scheduling layer.
 ///
 /// @param enabled      whether scheduling beans are registered
-/// @param group        default job and trigger group
+/// @param group        default prefix of the recurring job identifiers
 /// @param autoRegister whether methods annotated with [ForgeScheduled] are registered
 @ConfigurationProperties("forge.scheduling")
 public record ForgeSchedulingProperties(

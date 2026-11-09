@@ -23,7 +23,7 @@ public class OrderExpiryTasks {
     }
 
     /// Expires orders that were not paid within thirty minutes.
-    @ForgeScheduled(cron = "0 */10 * * * ?", name = "order-expiry")
+    @ForgeScheduled(cron = "0 */10 * * * *", name = "order-expiry")
     public void expireOverdueOrders() {
         orderService.expireOverdue(MAX_AGE);
     }

@@ -1,6 +1,5 @@
 package io.github.foundry4j.forge.scheduling;
 
-import org.quartz.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -18,7 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /// Registers every [ForgeScheduled] method once the application context is ready.
 ///
 /// Scanning happens on `ContextRefreshedEvent` and uses the bean definition types, so no
-/// bean is instantiated just to be inspected for annotations.
+/// bean is instantiated just to be inspected for annotations. Each method is registered as
+/// a JobRunr recurring job that dispatches back to the bean through [ForgeJobDispatcher].
 public class ForgeScheduledRegistrar implements ApplicationListener<ContextRefreshedEvent> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ForgeScheduledRegistrar.class);
@@ -42,6 +42,7 @@ public class ForgeScheduledRegistrar implements ApplicationListener<ContextRefre
         if (!registered.compareAndSet(false, true)) {
             return;
         }
+        ForgeJobDispatcher.bind(context);
         ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
         for (String beanName : beanFactory.getBeanNamesForType(Object.class)) {
             Class<?> beanType = beanFactory.getType(beanName);
@@ -67,19 +68,14 @@ public class ForgeScheduledRegistrar implements ApplicationListener<ContextRefre
         }
         String name = scheduled.name().isBlank() ? beanName + "." + method.getName() : scheduled.name();
         String group = scheduled.group().isBlank() ? properties.group() : scheduled.group();
-        Map<String, Object> data = Map.of(
-                MethodInvokingJob.TARGET_BEAN, beanName,
-                MethodInvokingJob.TARGET_METHOD, method.getName());
-        Class<? extends Job> jobType = scheduled.concurrent()
-                ? MethodInvokingJob.class
-                : DisallowConcurrentMethodInvokingJob.class;
         try {
             if (!scheduled.cron().isBlank()) {
-                scheduler.scheduleCron(name, group, jobType, scheduled.cron(), data);
+                scheduler.scheduleCron(name, group, scheduled.cron(),
+                        () -> ForgeJobDispatcher.invoke(beanName, method.getName()));
                 LOG.info("Registered cron job [{}] from {}.{}", name, beanName, method.getName());
             } else if (scheduled.fixedDelay() > 0) {
-                scheduler.scheduleFixedDelay(name, group, jobType,
-                        Duration.ofMillis(scheduled.fixedDelay()), data);
+                scheduler.scheduleFixedDelay(name, group, Duration.ofMillis(scheduled.fixedDelay()),
+                        () -> ForgeJobDispatcher.invoke(beanName, method.getName()));
                 LOG.info("Registered fixed delay job [{}] from {}.{}", name, beanName, method.getName());
             } else {
                 LOG.warn("Ignoring @ForgeScheduled method [{}.{}]: cron and fixedDelay are both empty",

@@ -17,11 +17,12 @@ spring:
             hibernate.jdbc.time_zone: UTC
     flyway:
         enabled: true
-    quartz:
-        job-store-type: memory
-        properties:
-            org.quartz.threadPool.threadCount: 4
-            org.quartz.jobStore.misfireThreshold: 60000
+
+jobrunr:
+    background-job-server:
+        enabled: true
+    dashboard:
+        enabled: false
 
 forge:
     context:

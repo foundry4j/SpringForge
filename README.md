@@ -18,7 +18,7 @@ the domain.
 - Local-first defaults: the sample application runs without Redis, RabbitMQ, Kafka or an
   external database
 - Production-ready primitives: RFC 9457 errors, idempotency, rate limiting, distributed
-  locks, multi-tenant persistence, transactional outbox and Quartz scheduling
+  locks, multi-tenant persistence, transactional outbox and JobRunr scheduling
 
 ## Modules
 
@@ -34,7 +34,7 @@ the domain.
 | `forge-resilience` | `@FaultTolerant`: circuit breaker, retry and fallback |
 | `forge-messaging` | Broker neutral `ForgeMessage`, RabbitMQ and Kafka publishers, type based routing |
 | `forge-outbox` | Transactional outbox, pessimistic claiming, exponential backoff, stuck event recovery, background relay |
-| `forge-scheduling` | Quartz facade, `@ForgeScheduled`, `AbstractForgeJob`, injection aware job factory |
+| `forge-scheduling` | JobRunr facade, `@ForgeScheduled`, annotation driven registration, persistent and distributed jobs |
 | `forge-app` | Runnable sample application: orders, dictionary, inventory fallback, expiry job, Flyway migration |
 
 ## Features
@@ -173,14 +173,33 @@ the events are written to the log, so local development needs no infrastructure.
 ### Scheduling
 
 ```java
-@ForgeScheduled(cron = "0 */10 * * * ?", name = "order-expiry")
+@ForgeScheduled(cron = "0 */10 * * * *", name = "order-expiry")
 public void expireOverdueOrders() {
     orderService.expireOverdue(Duration.ofMinutes(30));
 }
 ```
 
-Jobs are registered after context refresh. Programmatic registration, one-shot jobs, pause,
-resume and cancel are available through `ForgeScheduler`.
+Annotated methods are registered as recurring JobRunr jobs after the context is refreshed.
+JobRunr stores the schedule in the application database, so it survives restarts, is shared by
+every node and is processed by the background job servers. Programmatic jobs use the JobRunr
+lambda API through `ForgeScheduler`:
+
+```java
+forgeScheduler.enqueue(() -> reportService.buildDailyReport());
+forgeScheduler.scheduleCron("weekly", "0 0 3 * * MON", () -> reportService.archive());
+forgeScheduler.cancel("weekly", "forge");
+```
+
+Cron expressions use the JobRunr format, either five fields or six fields with seconds first.
+The background job server and the dashboard are controlled by JobRunr's own properties:
+
+```yaml
+jobrunr:
+  background-job-server:
+    enabled: true
+  dashboard:
+    enabled: false
+```
 
 ## Requirements
 
@@ -196,7 +215,7 @@ resume and cancel are available through `ForgeScheduler`.
 ```
 
 The sample application starts on port 8080 with an in-memory H2 database, Flyway migrations,
-local cache, local locks, the outbox relay and Quartz enabled.
+local cache, local locks, the outbox relay and the JobRunr background job server.
 
 ```bash
 curl -X POST localhost:8080/api/orders \
@@ -227,4 +246,5 @@ curl localhost:8080/api/inventory/42
 | `forge.outbox.enabled` | `true` | Enables outbox storage and relay |
 | `forge.outbox.batch-size` | `50` | Events claimed per relay pass |
 | `forge.outbox.max-attempts` | `8` | Delivery attempts before an event is marked failed |
-| `forge.scheduling.enabled` | `true` | Enables the Quartz facade and job registrar |
+| `forge.scheduling.enabled` | `true` | Enables the JobRunr facade and the `@ForgeScheduled` registrar |
+| `forge.scheduling.group` | `forge` | Prefix of the recurring job identifiers |
