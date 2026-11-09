@@ -36,8 +36,10 @@ the domain.
 | --- | --- |
 | `forge-core` | Error codes, domain exceptions, `ApiResult` / `PageResult`, `ScopedValue` based `ForgeContext`, SpEL evaluator, ID and duration helpers |
 | `forge-cache` | Caffeine local cache, Redis cache, two-level cache with graceful Redis degradation, `KeyValueStore` abstraction |
+| `forge-ratelimit` | Standalone `@RateLimit` aspect, `KeyStrategy` dimensions, pluggable `RateLimiter` backend (in-memory or Redis) |
+| `forge-idempotency` | Standalone `@Idempotent` aspect, cached result replay, pluggable `IdempotentStore` (in-memory or Redis) and key resolver |
 | `forge-lock` | Local and Redis lock managers, safe Lua based release, `@DistributedLock` aspect |
-| `forge-web` | Bean validation extensions, RFC 9457 global error handling, response wrapping, `@Idempotent`, `@RateLimit`, request context filter |
+| `forge-web` | Bean validation extensions, RFC 9457 global error handling, response wrapping, request context filter, HTTP resolvers for the guard modules |
 | `forge-data` | `BaseEntity` / `TenantEntity`, JPA auditing, multi-tenancy, soft delete, cached data dictionary |
 | `forge-resilience` | `@FaultTolerant`: circuit breaker, retry and fallback |
 | `forge-messaging` | Broker neutral `ForgeMessage`, RabbitMQ and Kafka publishers, type based routing |
@@ -61,16 +63,64 @@ public record CreateOrderRequest(
 }
 ```
 
-### Idempotency and rate limiting
+### Rate limiting and idempotency
+
+Two independent modules provide the protections. `forge-ratelimit` only depends on
+`forge-core` and AspectJ; `forge-idempotency` adds Jackson to serialize replayed results.
+Neither module requires a servlet container.
 
 ```java
 @PostMapping
-@Idempotent(header = "Idempotency-Key", ttlSeconds = 600)
-@RateLimit(name = "order-create", permits = 30, windowSeconds = 60)
+@RateLimit(permits = 30, windowSeconds = 60)   // per authenticated user by default
+@Idempotent(ttlSeconds = 600)                  // key from Idempotency-Key or arguments
 public OrderView create(@Valid @RequestBody CreateOrderRequest request) {
     return service.create(request);
 }
 ```
+
+`@RateLimit` exposes `KeyStrategy.USER`, `KeyStrategy.IP` and `KeyStrategy.GLOBAL`; the quota
+is enforced by a `RateLimiter` bean. The default is an in-memory fixed window, which is only
+correct for a single instance: every node would keep its own counter.
+
+`@Idempotent` caches the successful result for `ttlSeconds`. A duplicate received while the
+first call is still running fails with a conflict; a duplicate received afterwards gets the
+cached result without invoking the method again. Keys come from expressions such as
+`@Idempotent(key = "order:#request.orderNo")`, from the `Idempotency-Key` header in web
+applications, or from the serialized arguments when neither is present. State is stored by
+an `IdempotentStore` bean, in memory by default; a cluster needs a shared store as well.
+
+Non-web workloads drive both modules with expressions:
+
+```java
+@RateLimit(permits = 500, windowSeconds = 60, key = KeyStrategy.GLOBAL)
+@Idempotent(key = "event:#event.id", ttlSeconds = 3600)
+public void onEvent(OrderEvent event) {
+    // message consumer: no HTTP request involved
+}
+```
+
+#### Distributed deployments
+
+The in-memory backends keep their state inside the JVM, so with more than one instance a
+quota would be multiplied by the number of nodes and two nodes could execute the same
+idempotent request. Point both modules at Redis to share the state:
+
+```yaml
+forge:
+  ratelimit:
+    provider: redis          # shared fixed window
+    key-prefix: "forge:ratelimit:"
+  idempotency:
+    provider: redis          # shared PROCESSING / DONE state
+    key-prefix: "forge:idempotency:"
+```
+
+The Redis backend is activated only when Spring Data Redis is on the classpath and the
+property is set to `redis`; otherwise the in-memory default stays in place, so modules
+without Redis keep working unchanged. Both backends are written as Lua scripts, which makes
+the counter increment atomic and lets exactly one node reserve an idempotency key, while
+every other node receives the cached result or a conflict. Any `RateLimiter` or
+`IdempotentStore` bean declared by the application still takes precedence.
 
 ### Distributed locks
 
@@ -176,6 +226,10 @@ curl localhost:8080/api/inventory/42
 | `forge.context.default-tenant` | `default` | Tenant used when no `X-Tenant-Id` header is present |
 | `forge.cache.provider` | `local` | `local`, `redis` or `tiered` |
 | `forge.cache.local-ttl` | `30s` | Local cache entry lifetime |
+| `forge.ratelimit.provider` | `local` | `local` or `redis` |
+| `forge.ratelimit.key-prefix` | `forge:ratelimit:` | Prefix of the Redis quota keys |
+| `forge.idempotency.provider` | `local` | `local` or `redis` |
+| `forge.idempotency.key-prefix` | `forge:idempotency:` | Prefix of the Redis idempotency keys |
 | `forge.lock.provider` | `local` | `local` or `redis` |
 | `forge.lock.wait-time` | `2s` | Maximum wait for a lock |
 | `forge.messaging.enabled` | `false` | Enables the RabbitMQ / Kafka publisher setup |

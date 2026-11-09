@@ -1,5 +1,6 @@
 package io.github.foundry4j.forge.app;
 
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,22 +50,26 @@ class OrderApiTest {
     }
 
     @Test
-    void rejectsDuplicatedIdempotentRequests() throws Exception {
+    void replaysTheFirstResponseForDuplicatedRequests() throws Exception {
         String body = """
                 {"customerName":"Grace","amount":10.00}
                 """;
-        mockMvc.perform(post("/api/orders")
+        String first = mockMvc.perform(post("/api/orders")
                         .header("Idempotency-Key", "api-test-2")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String orderNo = JsonPath.read(first, "$.data.orderNo");
 
         mockMvc.perform(post("/api/orders")
                         .header("Idempotency-Key", "api-test-2")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("COMMON_409"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"))
+                .andExpect(jsonPath("$.data.orderNo").value(orderNo));
     }
 
     @Test

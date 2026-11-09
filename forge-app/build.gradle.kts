@@ -4,6 +4,8 @@ plugins {
 
 dependencies {
     implementation(project(":forge-web"))
+    implementation(project(":forge-ratelimit"))
+    implementation(project(":forge-idempotency"))
     implementation(project(":forge-data"))
     implementation(project(":forge-cache"))
     implementation(project(":forge-lock"))

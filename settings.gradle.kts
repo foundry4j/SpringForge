@@ -9,6 +9,8 @@ dependencyResolutionManagement {
 include(
     "forge-core",
     "forge-cache",
+    "forge-ratelimit",
+    "forge-idempotency",
     "forge-lock",
     "forge-web",
     "forge-data",

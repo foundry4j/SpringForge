@@ -1,0 +1,2 @@
+io.github.foundry4j.forge.idempotency.autoconfigure.ForgeRedisIdempotencyAutoConfiguration
+io.github.foundry4j.forge.idempotency.autoconfigure.ForgeIdempotencyAutoConfiguration

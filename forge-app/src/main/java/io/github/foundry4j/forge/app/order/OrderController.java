@@ -1,8 +1,8 @@
 package io.github.foundry4j.forge.app.order;
 
 import io.github.foundry4j.forge.core.result.PageResult;
-import io.github.foundry4j.forge.web.idempotent.Idempotent;
-import io.github.foundry4j.forge.web.ratelimit.RateLimit;
+import io.github.foundry4j.forge.idempotency.Idempotent;
+import io.github.foundry4j.forge.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -33,8 +33,8 @@ public class OrderController {
     /// submissions and the rate limit caps how many orders a client may create per
     /// minute.
     @PostMapping
-    @Idempotent(header = "Idempotency-Key", ttlSeconds = 600)
-    @RateLimit(name = "order-create", permits = 30, windowSeconds = 60)
+    @Idempotent(ttlSeconds = 600)
+    @RateLimit(permits = 30, windowSeconds = 60)
     public OrderView create(@Valid @RequestBody CreateOrderRequest request) {
         return service.create(request);
     }

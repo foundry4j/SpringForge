@@ -1,14 +1,17 @@
 package io.github.foundry4j.forge.web.autoconfigure;
 
-import io.github.foundry4j.forge.cache.store.KeyValueStore;
 import io.github.foundry4j.forge.core.context.ForgeContextProperties;
 import io.github.foundry4j.forge.core.support.ExpressionEvaluator;
+import io.github.foundry4j.forge.idempotency.ExpressionIdempotentKeyResolver;
+import io.github.foundry4j.forge.idempotency.IdempotentKeyResolver;
+import io.github.foundry4j.forge.ratelimit.RateLimitSubjectResolver;
 import io.github.foundry4j.forge.web.ForgeWebProperties;
 import io.github.foundry4j.forge.web.error.GlobalExceptionHandler;
 import io.github.foundry4j.forge.web.filter.ForgeRequestContextFilter;
-import io.github.foundry4j.forge.web.idempotent.IdempotencyAspect;
-import io.github.foundry4j.forge.web.ratelimit.RateLimitAspect;
+import io.github.foundry4j.forge.web.idempotency.HttpIdempotentKeyResolver;
+import io.github.foundry4j.forge.web.ratelimit.WebRateLimitSubjectResolver;
 import io.github.foundry4j.forge.web.result.ApiResponseAdvice;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -16,8 +19,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
-/// Wires validation, error handling, idempotency and rate limiting.
+/// Wires validation, error handling and the HTTP resolvers used by the guard modules.
 @AutoConfiguration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @EnableConfigurationProperties(ForgeWebProperties.class)
@@ -48,17 +53,19 @@ public class ForgeWebAutoConfiguration {
         return registration;
     }
 
-    /// Idempotency aspect.
+    /// Supplies idempotency keys from the request header.
     @Bean
     @ConditionalOnMissingBean
-    public IdempotencyAspect forgeIdempotencyAspect(KeyValueStore store, ExpressionEvaluator evaluator) {
-        return new IdempotencyAspect(store, evaluator);
+    public IdempotentKeyResolver forgeIdempotentKeyResolver(ExpressionEvaluator evaluator,
+                                                            ObjectProvider<ObjectMapper> objectMapper) {
+        ObjectMapper mapper = objectMapper.getIfAvailable(() -> JsonMapper.builder().build());
+        return new HttpIdempotentKeyResolver(new ExpressionIdempotentKeyResolver(evaluator, mapper));
     }
 
-    /// Rate limiting aspect.
+    /// Supplies rate limit subjects from the authenticated user or the client address.
     @Bean
     @ConditionalOnMissingBean
-    public RateLimitAspect forgeRateLimitAspect(KeyValueStore store, ExpressionEvaluator evaluator) {
-        return new RateLimitAspect(store, evaluator);
+    public RateLimitSubjectResolver forgeRateLimitSubjectResolver() {
+        return new WebRateLimitSubjectResolver();
     }
 }
