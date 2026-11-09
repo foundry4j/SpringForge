@@ -17,6 +17,7 @@ include(
     "forge-resilience",
     "forge-messaging",
     "forge-outbox",
+    "forge-notification",
     "forge-scheduling",
     "forge-app",
 )

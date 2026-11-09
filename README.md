@@ -18,7 +18,8 @@ the domain.
 - Local-first defaults: the sample application runs without Redis, RabbitMQ, Kafka or an
   external database
 - Production-ready primitives: RFC 9457 errors, idempotency, rate limiting, distributed
-  locks, multi-tenant persistence, transactional outbox and JobRunr scheduling
+  locks, multi-tenant persistence, transactional outbox, notification delivery and JobRunr
+  scheduling
 
 ## Modules
 
@@ -34,6 +35,7 @@ the domain.
 | `forge-resilience` | `@FaultTolerant`: circuit breaker, retry and fallback |
 | `forge-messaging` | Broker neutral `ForgeMessage`, RabbitMQ and Kafka publishers, type based routing |
 | `forge-outbox` | Transactional outbox, pessimistic claiming, exponential backoff, stuck event recovery, background relay |
+| `forge-notification` | Persistent notification log, `NotificationSender` SPI for system, e-mail and SMS delivery, exponential retry |
 | `forge-scheduling` | JobRunr facade, `@ForgeScheduled`, annotation driven registration, persistent and distributed jobs |
 | `forge-app` | Runnable sample application: orders, dictionary, inventory fallback, expiry job, Flyway migration |
 
@@ -170,6 +172,34 @@ A background relay claims pending rows with `SELECT ... FOR UPDATE`, delivers th
 configured publisher and retries failed deliveries with exponential backoff. Without a broker
 the events are written to the log, so local development needs no infrastructure.
 
+### Notifications
+
+Every notification is persisted in `forge_notification` with its channel, recipient, status
+and delivery attempts. Three channels are supported out of the box through the
+`NotificationSender` SPI: `SYSTEM`, `EMAIL` and `SMS`.
+
+```java
+notificationService.send(NotificationRequest.system("user-1", "Order paid", "Thanks Ada"));
+notificationService.send(NotificationRequest.email("ada@example.com", "Order paid", "Thanks Ada"));
+notificationService.send(NotificationRequest.sms("13800138000", "Order paid", "Thanks Ada"));
+```
+
+The built-in senders write to the log, so the module works without an SMTP server or an SMS
+gateway. Declare a `NotificationSender` bean for a channel to plug a real provider; it
+replaces the built-in sender of that channel:
+
+```java
+@Bean
+NotificationSender smtpNotificationSender(JavaMailSender mailSender) {
+    return new SmtpNotificationSender(mailSender);
+}
+```
+
+A failed delivery stays `PENDING` and is retried by a background dispatcher with an
+exponential backoff. Once the attempt budget is exhausted the notification becomes `FAILED`
+and can be replayed with `notificationService.retry(id)`. A delivery failure never rolls back
+the calling business transaction.
+
 ### Scheduling
 
 ```java
@@ -246,5 +276,10 @@ curl localhost:8080/api/inventory/42
 | `forge.outbox.enabled` | `true` | Enables outbox storage and relay |
 | `forge.outbox.batch-size` | `50` | Events claimed per relay pass |
 | `forge.outbox.max-attempts` | `8` | Delivery attempts before an event is marked failed |
+| `forge.notification.enabled` | `true` | Enables the notification log and the sender SPI |
+| `forge.notification.retry-enabled` | `true` | Retries pending notifications in the background |
+| `forge.notification.max-attempts` | `3` | Delivery attempts before a notification is marked failed |
+| `forge.notification.retry-delay` | `1m` | Base delay of the exponential backoff |
+| `forge.notification.poll-interval` | `30s` | Pause between two retry passes |
 | `forge.scheduling.enabled` | `true` | Enables the JobRunr facade and the `@ForgeScheduled` registrar |
 | `forge.scheduling.group` | `forge` | Prefix of the recurring job identifiers |

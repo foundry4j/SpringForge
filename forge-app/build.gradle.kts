@@ -12,6 +12,7 @@ dependencies {
     implementation(project(":forge-resilience"))
     implementation(project(":forge-messaging"))
     implementation(project(":forge-outbox"))
+    implementation(project(":forge-notification"))
     implementation(project(":forge-scheduling"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
