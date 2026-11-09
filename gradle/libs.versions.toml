@@ -1,0 +1,14 @@
+[versions]
+spring-boot = "4.1.2"
+resilience4j = "2.4.0"
+junit = "6.0.3"
+
+[libraries]
+spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+resilience4j-circuitbreaker = { module = "io.github.resilience4j:resilience4j-circuitbreaker", version.ref = "resilience4j" }
+resilience4j-retry = { module = "io.github.resilience4j:resilience4j-retry", version.ref = "resilience4j" }
+resilience4j-core = { module = "io.github.resilience4j:resilience4j-core", version.ref = "resilience4j" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
