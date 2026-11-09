@@ -7,19 +7,7 @@
 ![Java 27+](https://img.shields.io/badge/Java-27%2B-ED8B00?logo=openjdk&logoColor=white)
 [![CI](https://github.com/foundry4j/SpringForge/actions/workflows/ci.yml/badge.svg)](https://github.com/foundry4j/SpringForge/actions/workflows/ci.yml)
 
-## Overview
-
-SpringForge packages the cross-cutting concerns of a microservice into small, independently
-usable Gradle modules. Every module ships an auto-configuration, sensible defaults and tests,
-so an application only has to depend on the modules it needs and keep its own code focused on
-the domain.
-
-- Spring Boot 4.1 with Spring Framework 7, Jackson 3 and Hibernate 7
-- Local-first defaults: the sample application runs without Redis, RabbitMQ, Kafka or an
-  external database
-- Production-ready primitives: RFC 9457 errors, idempotency, rate limiting, distributed
-  locks, multi-tenant persistence, transactional outbox, notification delivery and JobRunr
-  scheduling
+A modular rapid microservice development framework based on Spring Boot, with built-in everyday development fundamentals such as unified responses, exception handling, data access, security authentication, rate limiting, Redis, and observability.
 
 ## Modules
 
