@@ -30,6 +30,15 @@ public class DictItem extends BaseEntity {
     @Column(name = "extra", length = 1024)
     private String extra;
 
+    @Column(name = "parent_code", length = 128)
+    private String parentCode;
+
+    @Column(name = "item_level", nullable = false)
+    private int level = 1;
+
+    @Column(name = "description", length = 512)
+    private String description;
+
     /// Code of the owning dictionary.
     public String getDictTypeCode() {
         return dictTypeCode;
@@ -88,5 +97,35 @@ public class DictItem extends BaseEntity {
     /// Sets the extra payload.
     public void setExtra(String extra) {
         this.extra = extra;
+    }
+
+    /// Value of the parent item, used to build trees.
+    public String getParentCode() {
+        return parentCode;
+    }
+
+    /// Sets the parent item value.
+    public void setParentCode(String parentCode) {
+        this.parentCode = parentCode;
+    }
+
+    /// Depth of the item inside its tree, root items are level 1.
+    public int getLevel() {
+        return level;
+    }
+
+    /// Sets the tree depth.
+    public void setLevel(int level) {
+        this.level = level;
+    }
+
+    /// Optional description shown in admin screens.
+    public String getDescription() {
+        return description;
+    }
+
+    /// Sets the description.
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

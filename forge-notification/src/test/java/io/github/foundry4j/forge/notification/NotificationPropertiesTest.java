@@ -11,7 +11,7 @@ class NotificationPropertiesTest {
 
     @Test
     void appliesDefaultsForMissingValues() {
-        var properties = new NotificationProperties(null, null, null, null, null, null);
+        var properties = new NotificationProperties(null, null, null, null, null, null, null, null, null);
 
         assertThat(properties.enabled()).isTrue();
         assertThat(properties.retryEnabled()).isTrue();
@@ -24,7 +24,7 @@ class NotificationPropertiesTest {
     @Test
     void keepsExplicitValues() {
         var properties = new NotificationProperties(false, false, 5, 9,
-                Duration.ofSeconds(10), Duration.ofSeconds(3));
+                Duration.ofSeconds(10), Duration.ofSeconds(3), true, true, "/ws/test");
 
         assertThat(properties.enabled()).isFalse();
         assertThat(properties.retryEnabled()).isFalse();

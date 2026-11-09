@@ -14,6 +14,14 @@ dependencies {
     implementation(project(":forge-outbox"))
     implementation(project(":forge-notification"))
     implementation(project(":forge-scheduling"))
+    implementation(project(":forge-validation"))
+    implementation(project(":forge-crypto"))
+    implementation(project(":forge-security"))
+    implementation(project(":forge-audit"))
+    implementation(project(":forge-excel"))
+    implementation(project(":forge-rpc"))
+    implementation(project(":forge-observability"))
+    implementation(project(":forge-migration"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -25,6 +33,7 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation(project(":forge-test"))
 }
 
 springBoot {

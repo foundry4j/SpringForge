@@ -16,6 +16,9 @@ allprojects {
 }
 
 subprojects {
+    if (name == "forge-bom") {
+        return@subprojects
+    }
     apply(plugin = "java-library")
     apply(plugin = "jacoco")
 

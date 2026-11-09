@@ -1,5 +1,6 @@
 package io.github.foundry4j.forge.data.entity;
 
+import io.github.foundry4j.forge.data.audit.AuditEntityListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
@@ -23,7 +24,7 @@ import java.time.Instant;
 /// `UPDATE ... SET deleted = true` and every criteria query automatically filters
 /// deleted rows out.
 @MappedSuperclass
-@EntityListeners(AuditingEntityListener.class)
+@EntityListeners({AuditingEntityListener.class, AuditEntityListener.class})
 @SoftDelete
 public abstract class BaseEntity {
 

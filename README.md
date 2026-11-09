@@ -18,13 +18,23 @@ A modular rapid microservice development framework based on Spring Boot, with bu
 | `forge-ratelimit` | Standalone `@RateLimit` aspect, `KeyStrategy` dimensions, pluggable `RateLimiter` backend (in-memory or Redis) |
 | `forge-idempotency` | Standalone `@Idempotent` aspect, cached result replay, pluggable `IdempotentStore` (in-memory or Redis) and key resolver |
 | `forge-lock` | Local and Redis lock managers, safe Lua based release, `@DistributedLock` aspect |
-| `forge-web` | Bean validation extensions, RFC 9457 global error handling, response wrapping, request context filter, HTTP resolvers for the guard modules |
-| `forge-data` | `BaseEntity` / `TenantEntity`, JPA auditing, multi-tenancy, soft delete, cached data dictionary |
+| `forge-web` | Bean validation extensions, RFC 9457 global error handling, response wrapping, request context filter, API versioning, access log, local file storage, HTTP resolvers for the guard modules |
+| `forge-validation` | Reusable constraints: ID card, bank card (Luhn), password strength, enum name |
+| `forge-data` | `BaseEntity` / `TenantEntity`, JPA auditing, field level change audit, multi-tenancy, soft delete, snowflake ids, cached hierarchical data dictionary |
+| `forge-crypto` | AES-256-GCM `CryptoService`, JPA `@Encrypted` converter, `@Sensitive` masking serializers |
+| `forge-security` | Login user context, stateless HS256 JWT service, servlet authentication filter, `@RequiresRole` / `@RequiresPermission` |
+| `forge-audit` | Entity change audit log and `@OperationLog` aspect backed by JDBC writes |
 | `forge-resilience` | `@FaultTolerant`: circuit breaker, retry and fallback |
-| `forge-messaging` | Broker neutral `ForgeMessage`, RabbitMQ and Kafka publishers, type based routing |
+| `forge-messaging` | Broker neutral `ForgeMessage`, local / RabbitMQ / Kafka transports, `@MessageConsumer` registration |
 | `forge-outbox` | Transactional outbox, pessimistic claiming, exponential backoff, stuck event recovery, background relay |
-| `forge-notification` | Persistent notification log, `NotificationSender` SPI for system, e-mail and SMS delivery, exponential retry |
+| `forge-notification` | Persistent notification log, `NotificationSender` SPI for system, e-mail and SMS delivery, inbox API, WebSocket push, exponential retry |
 | `forge-scheduling` | JobRunr facade, `@ForgeScheduled`, annotation driven registration, persistent and distributed jobs |
+| `forge-excel` | Streaming `.xlsx` / CSV export with POI SXSSF, streaming import with row level errors, Spring MVC helpers |
+| `forge-rpc` | gRPC status mapping of business errors, trace id propagation interceptors |
+| `forge-observability` | Actuator health indicator and optional OpenAPI `bearerAuth` scheme |
+| `forge-migration` | Flyway defaults for `classpath:db/migration` with baseline enabled |
+| `forge-test` | `@CleanDatabase` JUnit extension and `TestAuth` helpers |
+| `forge-bom` | Gradle `java-platform` constraining every Forge module |
 | `forge-app` | Runnable sample application: orders, dictionary, inventory fallback, expiry job, Flyway migration |
 
 ## Features
@@ -124,6 +134,83 @@ The default provider is local; set `forge.lock.provider=redis` to use Redis with
 @Table(name = "forge_order")
 public class Order extends TenantEntity {
     // tenant isolation, auditing and soft delete come from the superclass
+}
+```
+
+### Dictionaries
+
+Dictionaries are cached and support hierarchical items through `parentCode` plus `level`.
+
+```java
+List<DictItemView> items = dictService.items("order_status");
+String label = dictService.translate("order_status", "PAID");
+```
+
+`/api/dicts/{typeCode}` serves the cached items; `/api/admin/dicts` offers CRUD for types
+and items. Every mutation evicts the affected cache entries, and the enabled dictionaries
+are preloaded at startup.
+
+### File storage and API versions
+
+`FileStorage` stores uploads under `forge.web.file.location` with size and content-type
+validation and path traversal protection. Downloads stream the file with an RFC 5987
+`Content-Disposition`. `@ApiVersion` resolves the version from the `X-Api-Version` header or
+a `vN` path segment and renders `Deprecation` / `Sunset` hints for deprecated versions.
+
+### Excel import and export
+
+```java
+ExcelExporter.write(out, ExcelFormat.XLSX,
+        ExcelExportSpec.<Order>builder("Orders")
+                .column("Order no", Order::orderNo)
+                .column("Amount", Order::amount)
+                .build(),
+        orderStream);
+
+ImportResult result = ExcelHttp.importUpload(file,
+        ExcelImportSpec.<Order>builder()
+                .mapper(row -> new Order(row.cell("Order no"), new BigDecimal(row.cell("Amount"))))
+                .validator((order, ctx) -> {
+                    if (order.amount().signum() <= 0) {
+                        ctx.reject("amount", order.amount().toString(), "Amount must be positive");
+                    }
+                })
+                .rowSink(orders::add)
+                .build());
+```
+
+Export streams through POI `SXSSFWorkbook` (constant memory) or CSV with an optional UTF-8
+BOM. Import streams too, maps each row, runs the validators and reports failed rows as
+`RowError` instead of aborting, with an optional error cap.
+
+### Security and audit
+
+```java
+@RequiresPermission("order:close")
+public void close(long orderId) {
+    LoginUser user = AuthContextHolder.require();   // id, username, roles, permissions
+}
+```
+
+`JwtTokenService` issues and verifies HS256 tokens when `forge.jwt.secret` is configured.
+`@OperationLog` records method arguments, result, error, duration and the trace id;
+entity changes are captured by the JPA audit listener into `forge_audit_log`.
+
+### Observability and testing
+
+`forge-observability` registers a `forge` health component and, when springdoc is present,
+adds the `bearerAuth` security scheme. `forge-test` contributes a JUnit extension and
+identity helpers:
+
+```java
+@SpringBootTest
+@CleanDatabase
+class UserRepositoryTest {
+    @Test
+    void adminCanCloseOrder() {
+        TestAuth.authenticate(Set.of("ADMIN"));
+        // ...
+    }
 }
 ```
 
@@ -251,6 +338,21 @@ curl localhost:8080/api/inventory/42
 | Property | Default | Description |
 | --- | --- | --- |
 | `forge.context.default-tenant` | `default` | Tenant used when no `X-Tenant-Id` header is present |
+| `forge.web.response-wrapping` | `true` | Wraps successful responses into `ApiResult` |
+| `forge.web.access-log.enabled` | `true` | Writes one access log line per request |
+| `forge.web.api-version.enabled` | `true` | Enables `@ApiVersion` negotiation |
+| `forge.web.api-version.default-version` | `v1` | Version assumed when the caller sends none |
+| `forge.web.file.base-dir` | `${java.io.tmpdir}/forge-files` | Root directory of uploaded files |
+| `forge.web.file.max-size` | `10MB` | Maximum accepted upload size |
+| `forge.data.worker-id` | `0` | Snowflake worker identifier, must be unique per node |
+| `forge.data.dict.warmup` | `true` | Preloads enabled dictionaries at startup |
+| `forge.crypto.key` | – | AES key material, required to enable `CryptoService` |
+| `forge.jwt.secret` | – | HS256 secret, required to enable JWT authentication |
+| `forge.jwt.issuer` | `forge` | Expected `iss` claim |
+| `forge.jwt.ttl` | `1h` | Lifetime of issued tokens |
+| `forge.audit.enabled` | `true` | Captures entity changes into `forge_audit_log` |
+| `forge.rpc.trace.enabled` | `true` | Propagates the trace id through gRPC metadata |
+| `forge.observability.enabled` | `true` | Registers the framework health indicator |
 | `forge.cache.provider` | `local` | `local`, `redis` or `tiered` |
 | `forge.cache.local-ttl` | `30s` | Local cache entry lifetime |
 | `forge.ratelimit.provider` | `local` | `local` or `redis` |
@@ -269,5 +371,8 @@ curl localhost:8080/api/inventory/42
 | `forge.notification.max-attempts` | `3` | Delivery attempts before a notification is marked failed |
 | `forge.notification.retry-delay` | `1m` | Base delay of the exponential backoff |
 | `forge.notification.poll-interval` | `30s` | Pause between two retry passes |
+| `forge.notification.email-enabled` | `false` | Fans user notifications out to e-mail |
+| `forge.notification.sms-enabled` | `false` | Fans user notifications out to SMS |
+| `forge.notification.web-socket-path` | `/ws/notifications` | Endpoint of the real-time notification socket |
 | `forge.scheduling.enabled` | `true` | Enables the JobRunr facade and the `@ForgeScheduled` registrar |
 | `forge.scheduling.group` | `forge` | Prefix of the recurring job identifiers |

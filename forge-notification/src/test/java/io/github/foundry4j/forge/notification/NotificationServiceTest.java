@@ -25,7 +25,7 @@ class NotificationServiceTest {
 
     private final NotificationRepository repository = mock(NotificationRepository.class);
     private final NotificationProperties properties = new NotificationProperties(
-            true, true, 10, 2, Duration.ofSeconds(5), Duration.ofSeconds(1));
+            true, true, 10, 2, Duration.ofSeconds(5), Duration.ofSeconds(1), false, false, null);
 
     @Test
     void deliversThroughTheMatchingPlugin() {
@@ -63,7 +63,7 @@ class NotificationServiceTest {
             throw new IllegalStateException("smtp down");
         });
         var exhausted = new NotificationProperties(true, false, 10, 1,
-                Duration.ofSeconds(5), Duration.ofSeconds(1));
+                Duration.ofSeconds(5), Duration.ofSeconds(1), false, false, null);
         var service = new NotificationService(repository, List.of(email), exhausted);
 
         NotificationMessage message = service.send(

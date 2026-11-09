@@ -9,6 +9,9 @@ public enum CommonErrorCode implements ErrorCode {
     /// The request could not be parsed or failed bean validation.
     BAD_REQUEST("COMMON_400", "Bad request", 400),
 
+    /// The requested API version is not supported by the endpoint.
+    API_VERSION_UNSUPPORTED("COMMON_400_API_VERSION", "Unsupported API version", 400),
+
     /// Authentication is required.
     UNAUTHORIZED("COMMON_401", "Unauthorized", 401),
 
@@ -26,6 +29,12 @@ public enum CommonErrorCode implements ErrorCode {
 
     /// The resource is temporarily locked by another caller.
     LOCKED("COMMON_423", "Resource is locked", 423),
+
+    /// The uploaded payload exceeds the configured size limit.
+    PAYLOAD_TOO_LARGE("COMMON_413", "Payload too large", 413),
+
+    /// The uploaded media type is not accepted by the endpoint.
+    UNSUPPORTED_MEDIA_TYPE("COMMON_415", "Unsupported media type", 415),
 
     /// Too many requests were issued inside the configured window.
     TOO_MANY_REQUESTS("COMMON_429", "Too many requests", 429),

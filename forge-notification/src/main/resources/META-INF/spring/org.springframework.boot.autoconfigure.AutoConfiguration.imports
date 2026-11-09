@@ -1,1 +1,2 @@
 io.github.foundry4j.forge.notification.autoconfigure.ForgeNotificationAutoConfiguration
+io.github.foundry4j.forge.notification.autoconfigure.NotificationWebSocketAutoConfiguration

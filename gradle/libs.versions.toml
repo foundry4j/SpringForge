@@ -3,6 +3,9 @@ spring-boot = "4.1.2"
 resilience4j = "2.4.0"
 jobrunr = "9.0.3"
 junit = "6.0.3"
+poi = "5.4.1"
+grpc = "1.71.0"
+springdoc = "3.0.0"
 
 [libraries]
 spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -11,6 +14,9 @@ jobrunr-spring-boot-starter = { module = "org.jobrunr:jobrunr-spring-boot-4-star
 resilience4j-circuitbreaker = { module = "io.github.resilience4j:resilience4j-circuitbreaker", version.ref = "resilience4j" }
 resilience4j-retry = { module = "io.github.resilience4j:resilience4j-retry", version.ref = "resilience4j" }
 resilience4j-core = { module = "io.github.resilience4j:resilience4j-core", version.ref = "resilience4j" }
+poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
+grpc-api = { module = "io.grpc:grpc-api", version.ref = "grpc" }
+springdoc-openapi-common = { module = "org.springdoc:springdoc-openapi-starter-common", version.ref = "springdoc" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

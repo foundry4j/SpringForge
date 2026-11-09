@@ -2,7 +2,9 @@ package io.github.foundry4j.forge.web.result;
 
 import io.github.foundry4j.forge.core.result.ApiResult;
 import io.github.foundry4j.forge.web.ForgeWebProperties;
+import io.github.foundry4j.forge.web.annotation.RawResponse;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -10,12 +12,13 @@ import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /// Wraps successful controller return values into [ApiResult].
 ///
 /// Error responses are produced by [io.github.foundry4j.forge.web.error.GlobalExceptionHandler]
-/// and are never wrapped. Plain strings and byte arrays are skipped as well so that
-/// endpoints returning files or text keep working.
+/// and are never wrapped. Plain strings, byte arrays, resources and streaming bodies are
+/// skipped as well so that endpoints returning files or text keep working.
 @RestControllerAdvice
 public class ApiResponseAdvice implements ResponseBodyAdvice<Object> {
 
@@ -28,7 +31,7 @@ public class ApiResponseAdvice implements ResponseBodyAdvice<Object> {
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
-        return properties.responseWrapping();
+        return properties.responseWrapping() && !rawResponse(returnType);
     }
 
     @Override
@@ -48,6 +51,13 @@ public class ApiResponseAdvice implements ResponseBodyAdvice<Object> {
         return body instanceof ApiResult<?>
                 || body instanceof ProblemDetail
                 || body instanceof CharSequence
-                || body instanceof byte[];
+                || body instanceof byte[]
+                || body instanceof StreamingResponseBody
+                || body instanceof Resource;
+    }
+
+    private boolean rawResponse(MethodParameter returnType) {
+        return returnType.hasMethodAnnotation(RawResponse.class)
+                || returnType.getContainingClass().isAnnotationPresent(RawResponse.class);
     }
 }

@@ -14,7 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /// Tests for the RFC 9457 problem detail translation.
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler handler = new GlobalExceptionHandler(new ForgeWebProperties(null, null));
+    private final GlobalExceptionHandler handler =
+            new GlobalExceptionHandler(new ForgeWebProperties(null, null, null, null, null));
 
     @Test
     void mapsBusinessExceptionsToProblemDetails() {

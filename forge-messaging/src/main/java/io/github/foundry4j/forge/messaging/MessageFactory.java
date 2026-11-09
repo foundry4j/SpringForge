@@ -35,6 +35,11 @@ public class MessageFactory {
         return objectMapper.readValue(json, ForgeMessage.class);
     }
 
+    /// Deserializes the payload of a consumed message.
+    public <T> T decodePayload(String json, Class<T> type) {
+        return objectMapper.readValue(json, type);
+    }
+
     /// Serializes transport headers so they can be stored by the outbox.
     public String encodeHeaders(Map<String, String> headers) {
         return objectMapper.writeValueAsString(headers == null ? Map.of() : headers);
